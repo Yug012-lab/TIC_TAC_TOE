@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tic Tac Toe | Neon Pro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+  --bg:#050505;
+  --card:#0b0b0f;
+  --text:#ffffff;
+  --cell:#111827;
+  --border:#ffffff;
+  --neonPurple:#a855f7;
+  --neonWhite:#ffffff;
+  --neonBlack:#000000;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,system-ui,sans-serif;transition:.25s}
+body{background:var(--bg);color:var(--text);overflow:hidden}
+canvas{position:fixed;inset:0;z-index:-1}
+.game{min-height:100vh;display:flex;justify-content:center;align-items:center}
+.container{
+  background:var(--card);
+  padding:28px;
+  border-radius:22px;
+  width:360px;
+  border:1px solid var(--border);
+  box-shadow:0 0 25px var(--neonPurple),0 0 55px rgba(168,85,247,.35);
+  animation:pulse 4s infinite;
+}
+@keyframes pulse{
+  50%{box-shadow:0 0 45px var(--neonPurple),0 0 90px rgba(168,85,247,.55)}
+}
+h1{text-align:center;margin-bottom:6px}
+.sub{text-align:center;font-size:12px;opacity:.7;margin-bottom:10px}
+select{
+  width:100%;padding:10px;border-radius:12px;
+  background:#000;color:#fff;border:1px solid #fff;margin-bottom:12px
+}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}
+.cell{
+  height:90px;background:var(--cell);border-radius:18px;
+  display:flex;justify-content:center;align-items:center;
+  font-size:2.6rem;cursor:pointer;border:2px solid var(--border);
+}
+.cell:hover{
+  transform:scale(1.08);
+  box-shadow:0 0 20px var(--neonPurple),0 0 40px rgba(168,85,247,.6)
+}
+.X{color:var(--neonPurple);text-shadow:0 0 10px var(--neonPurple),0 0 25px var(--neonPurple)}
+.O{color:var(--neonWhite);text-shadow:0 0 10px #fff,0 0 25px #fff}
+.status{text-align:center;margin:12px 0;font-weight:700}
+.score{display:flex;justify-content:space-between;font-size:14px;opacity:.8}
+button{
+  width:100%;padding:13px;border:none;border-radius:14px;
+  background:var(--neonPurple);color:#fff;font-weight:800;cursor:pointer;
+  box-shadow:0 0 15px var(--neonPurple),0 0 40px rgba(168,85,247,.6)
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="game">
+<div class="container">
+  <h1>Tic Tac Toe</h1>
+  <div class="sub">Neon Edition</div>
+
+  <select id="mode">
+    <option value="friend">Play with Friend</option>
+    <option value="ai">Play with Computer</option>
+  </select>
+
+  <div class="score">
+    <span id="sx">X: 0</span>
+    <span id="sd">Draw: 0</span>
+    <span id="so">O: 0</span>
+  </div>
+
+  <div class="board" id="board"></div>
+  <div class="status" id="status">Player X Turn</div>
+  <button onclick="restart()">Restart</button>
+</div>
+</div>
+
+<script>
+/* SOUNDS */
+const xSound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-light-click-1113.mp3");
+const oSound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-click-melodic-1129.mp3");
+const winSound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3");
+const drawSound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-neutral-game-notification-933.mp3");
+const hoverSound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3");
+
+const bgMusic=new Audio("https://assets.mixkit.co/music/preview/mixkit-neon-gaming-1238.mp3");
+bgMusic.loop=true;
+bgMusic.volume=0.25;
+
+function playSound(s){
+ s.currentTime=0;
+ s.play();
+}
+
+document.body.addEventListener("click",()=>{
+ if(bgMusic.paused) bgMusic.play();
+},{once:true});
+
+const canvas=document.getElementById("bg");
+const c=canvas.getContext("2d");
+let w=canvas.width=innerWidth,h=canvas.height=innerHeight;
+onresize=()=>{w=canvas.width=innerWidth;h=canvas.height=innerHeight};
+
+class Dot{
+ constructor(){
+  this.x=Math.random()*w;this.y=Math.random()*h;
+  this.vx=(Math.random()-.5)*0.4;this.vy=(Math.random()-.5)*0.4;
+ }
+ move(){
+  this.x+=this.vx;this.y+=this.vy;
+  if(this.x<0||this.x>w) this.vx*=-1;
+  if(this.y<0||this.y>h) this.vy*=-1;
+ }
+ draw(){
+  c.fillStyle="rgba(168,85,247,.8)";
+  c.shadowColor="#a855f7";c.shadowBlur=12;
+  c.beginPath();c.arc(this.x,this.y,2,0,Math.PI*2);c.fill();
+ }
+}
+let dots=[...Array(70)].map(()=>new Dot());
+(function animate(){
+ c.clearRect(0,0,w,h);
+ dots.forEach(a=>{
+  a.move();a.draw();
+  dots.forEach(b=>{
+   let d=Math.hypot(a.x-b.x,a.y-b.y);
+   if(d<120){
+    c.strokeStyle="rgba(168,85,247,.25)";
+    c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();
+   }
+  });
+ });
+ requestAnimationFrame(animate);
+})();
+
+const board=document.getElementById("board");
+const statusText=document.getElementById("status");
+const mode=document.getElementById("mode");
+
+let cells=[],current="X",run=true;
+let score={X:0,O:0,D:0};
+const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+init();
+function init(){
+ board.innerHTML="";
+ cells=Array(9).fill("");
+ run=true;current="X";
+ statusText.textContent="Player X Turn";
+ for(let i=0;i<9;i++){
+  let d=document.createElement("div");
+  d.className="cell";
+  d.onmouseenter=()=>playSound(hoverSound);
+  d.onclick=()=>play(i,d);
+  board.appendChild(d);
+ }
+}
+
+function play(i,d){
+ if(cells[i]||!run)return;
+
+ cells[i]=current;
+ d.textContent=current;
+ d.classList.add(current);
+
+ current==="X"?playSound(xSound):playSound(oSound);
+
+ if(check(current)){
+  playSound(winSound);
+  statusText.textContent=current+" Wins!";
+  score[current]++;run=false;update();return;
+ }
+
+ if(!cells.includes("")){
+  playSound(drawSound);
+  statusText.textContent="Draw!";
+  score.D++;run=false;update();return;
+ }
+
+ current=current==="X"?"O":"X";
+ statusText.textContent="Player "+current+" Turn";
+
+ if(mode.value==="ai"&&current==="O"){
+  setTimeout(aiMove,400);
+ }
+}
+
+function aiMove(){
+ let empty=cells.map((v,i)=>v===""?i:null).filter(v=>v!==null);
+ play(empty[Math.floor(Math.random()*empty.length)],board.children[empty[0]]);
+}
+
+function check(p){return wins.some(w=>w.every(i=>cells[i]===p))}
+function update(){
+ sx.textContent="X: "+score.X;
+ so.textContent="O: "+score.O;
+ sd.textContent="Draw: "+score.D;
+}
+function restart(){init()}
+</script>
+</body>
+</html>
